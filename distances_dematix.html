@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculateur d'itinéraire</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet Routing Machine CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      height: 60vh;
+      width: 100%;
+    }
+
+    #infos {
+      padding: 12px 16px;
+      background: #f5f5f5;
+      font-size: 14px;
+    }
+
+    #infos span {
+      font-weight: bold;
+      color: #333;
+    }
+
+    input {
+      width: calc(50% - 12px);
+      padding: 8px;
+      margin: 6px 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    button {
+      padding: 8px 16px;
+      background: #0078A8;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 6px 4px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div style="padding:10px; background:#fff;">
+    <input type="text" id="depart" placeholder="Adresse de départ (ex: Paris)"/>
+    <input type="text" id="arrivee" placeholder="Adresse d'arrivée (ex: Lyon)"/>
+    <button onclick="calculerItineraire()">Calculer</button>
+  </div>
+
+  <div id="infos">Distance : <span id="distance">-</span> &nbsp;|&nbsp; Durée estimée : <span id="duree">-</span></div>
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet Routing Machine -->
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+
+  <script>
+    var carte = L.map('map').setView([46.8, 2.3], 6);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+    attribution: 'données © <a href="//osm.org/copyright">OpenStreetMap</a>/ODbL',
+    maxZoom: 20
+  }).addTo(carte);
+
+  var routeControl = null;
+
+  function geocode(adresse, callback) {
+    var url = "https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(adresse);
+    fetch(url).then(r => r.json()).then(data => {
+      if (data.length > 0) {
+        callback(L.latLng(parseFloat(data[0].lat), parseFloat(data[0].lon)));
+      } else {
+        alert("Adresse introuvable : " + adresse);
+      }
+    });
+  }
+
+  function calculerItineraire() {
+    var dep = document.getElementById('depart').value;
+    var arr = document.getElementById('arrivee').value;
+    if (!dep || !arr) { alert("Veuillez saisir les deux adresses."); return; }
+
+    geocode(dep, function(coordDep) {
+      geocode(arr, function(coordArr) {
+        if (routeControl) carte.removeControl(routeControl);
+
+        routeControl = L.Routing.control({
+          waypoints: [coordDep, coordArr],
+          routeWhileDragging: false,
+          language: 'fr',
+          show: false // masque le panneau de navigation détaillé
+        }).on('routesfound', function(e) {
+          var route = e.routes[0].summary;
+          var km = (route.totalDistance / 1000).toFixed(1);
+          var min = Math.round(route.totalTime / 60);
+          var h = Math.floor(min / 60);
+          var m = min % 60;
+          document.getElementById('distance').innerText = km + " km";
+          document.getElementById('duree').innerText = (h > 0 ? h + "h " : "") + m + " min";
+        }).addTo(carte);
+      });
+    });
+  }
+  </script>
+
+</body>
+
+</html>
